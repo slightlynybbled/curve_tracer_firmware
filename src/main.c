@@ -360,7 +360,8 @@ void initPwm(void){
     
     /* period registers */
     CCP1PRH = CCP2PRH = CCP4PRH = CCP5PRH = 0;
-    CCP1PRL = CCP2PRL = CCP4PRL = CCP5PRL = 1024;
+    CCP1PRL = CCP2PRL = 1024;
+    CCP4PRL = CCP5PRL = 256;
     
     CCP1CON1L = CCP2CON1L = CCP4CON1L = CCP5CON1L = 0x0005;
     CCP1CON1H = CCP2CON1H = CCP4CON1H = CCP5CON1H = 0x0000;
@@ -454,10 +455,6 @@ void _ISR _T1Interrupt(void){
         }else{
             DAC2DAT = 32768 + (uint16_t)dac2;
         }
-        
-        q15_t dc = (q15_t)(DAC1DAT >> 1);
-        setDutyCyclePWM3(dc);
-        setDutyCyclePWM4(dc);
     }
     
     /* reset sampleIndex on every cycle */
@@ -491,8 +488,12 @@ void _ISR _ADC1Interrupt(void){
 
         case LD_VOLTAGE_0_AN:
         {
+            int16_t sample = ((ADC1BUF0 >> 1) - loadVoltageL);
+            
+            q15_t dc = q15_add((sample >> 1), 16384);
+            setDutyCyclePWM3(dc);
+            
             if((sampleIndex < NUM_OF_SAMPLES) && (xmitActive == 0)){
-                int16_t sample = ((ADC1BUF0 >> 1) - loadVoltageL);
                 loadVoltage[sampleIndex] = sample;
             }
             
@@ -504,8 +505,13 @@ void _ISR _ADC1Interrupt(void){
 
         case CURRENT_VOLTAGE_AN:
         {
+            int16_t sample = (int16_t)((ADC1BUF0 >> 1) - 16384);
+            
+            q15_t dc = q15_add((sample >> 1), 16384);
+            setDutyCyclePWM4(dc);
+            
             if((sampleIndex < NUM_OF_SAMPLES) && (xmitActive == 0)){
-                loadCurrent[sampleIndex] = (int16_t)((ADC1BUF0 >> 1) - 16384);
+                loadCurrent[sampleIndex] = sample;
             }
 
             sampleIndex++;
